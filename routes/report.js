@@ -23,7 +23,8 @@ router.get("/report/:companyId/:period", async (req, res) => {
 
     const query = `
     SELECT 
-      o.id AS order_id, 
+      o.id AS order_id,
+      o.order_status_id AS order_status_id,  
       c.name AS customer_name, 
       a.address, 
       o.loocal_fee AS loocal_fee,
@@ -52,8 +53,6 @@ router.get("/report/:companyId/:period", async (req, res) => {
       o.company_id = :companyId
     AND 
       o.created_at >= :dateFilter
-    AND 
-      o.order_status_id IN (1, 6)
     ORDER BY 
       o.created_at DESC;
   `;
@@ -62,6 +61,16 @@ router.get("/report/:companyId/:period", async (req, res) => {
       replacements: { companyId, dateFilter },
       type: sequelize.QueryTypes.SELECT,
     });
+
+    const statusMap = {
+      1: "Aguardando",
+      2: "Preparando",
+      3: "Pronto",
+      4: "A caminho",
+      5: "Entregue",
+      6: "Cancelado",
+      7: "A caminho da retirada"
+    };
 
     const report = orders.map((order) => {
       const localFee = parseFloat(order.local_fee) || 0;
@@ -82,6 +91,7 @@ router.get("/report/:companyId/:period", async (req, res) => {
         "Taxa da Entrega": `R$ ${(localFee + deliveryCost)
           .toFixed(2)
           .replace(".", ",")}`,
+        "Status": statusMap[order.order_status_id] || "Desconhecido",
         "Nome do Entregador": order.deliveryman_name || "N/A"
       };
     });
